@@ -107,7 +107,7 @@ def newStateMOOR(currentRowNeighbours, upperRowNeighbours, lowerRowNeighbours, b
 
 
 def diffVN(currentRowNeighbours, upperRowNeighbours, lowerRowNeighbours):
-    difchance = 0.5
+    difchance = 0.1
 
     leftCharacter = currentRowNeighbours[0]
     selfCharacter = currentRowNeighbours[1]
@@ -116,10 +116,42 @@ def diffVN(currentRowNeighbours, upperRowNeighbours, lowerRowNeighbours):
     upperCharacter = upperRowNeighbours[1]
     lowerCharacter = lowerRowNeighbours[1]
 
-    swap = [leftCharacter, selfCharacter, rightCharacter, upperCharacter, lowerCharacter]
+    if selfCharacter == leftCharacter:
+        swap1 = [selfCharacter, rightCharacter, upperCharacter, lowerCharacter]
+        swap = [a for a in swap1 if a == '5']
+        if np.random.uniform() > difchance:
+            try:
+                selfCharacter = random.choice(swap)
+            except IndexError:
+                pass
 
-    if np.random.uniform() > difchance:
-        selfCharacter = random.choice(swap)
+    elif selfCharacter == rightCharacter:
+        swap1 = [selfCharacter, leftCharacter, upperCharacter, lowerCharacter]
+        swap = [a for a in swap1 if a == '5']
+        if np.random.uniform() > difchance:
+            try:
+                selfCharacter = random.choice(swap)
+            except IndexError:
+                pass
+
+    elif selfCharacter == upperCharacter:
+        swap1 = [selfCharacter, rightCharacter, leftCharacter, lowerCharacter]
+        swap = [a for a in swap1 if a == '5']
+        if np.random.uniform() > difchance:
+            try:
+                selfCharacter = random.choice(swap)
+            except IndexError:
+                pass
+
+    elif selfCharacter == lowerCharacter:
+        swap1 = [selfCharacter, rightCharacter, upperCharacter, leftCharacter]
+        swap = [a for a in swap1 if a == '5']
+        if np.random.uniform() > difchance:
+            try:
+                selfCharacter = random.choice(swap)
+            except IndexError:
+                pass
+
 
     return selfCharacter
 
@@ -141,11 +173,12 @@ def diffMOOR(currentRowNeighbours, upperRowNeighbours, lowerRowNeighbours):
     swap = [leftCharacter, selfCharacter, rightCharacter, upperRightCharacter, upperLeftCharacter, upperCharacter,
             lowerRightCharacter, lowerLeftCharacter, lowerCharacter]
 
+
     if np.random.uniform() > difchance:
         t = random.choice(swap)
         selfCharacter, t = t, selfCharacter
 
-    return diffMOOR
+    return selfCharacter
 
 
 def screenplay(cellCountX, cellCountY, info, total_iteration):
@@ -153,6 +186,7 @@ def screenplay(cellCountX, cellCountY, info, total_iteration):
     BLACK = (0, 0, 0)
     WHITE = (255, 255, 255)
     BLUE = (0, 0, 255)
+    pink = ((255, 100, 180))
     GREEN = (0, 255, 0)
     RED = (255, 0, 0)
     screenHeight = 500
@@ -195,6 +229,8 @@ def screenplay(cellCountX, cellCountY, info, total_iteration):
             for current_row in range(cellCountY):
                 for current_column in range(cellCountX):
                     if 0 < step < total_iteration:
+                        if info[step][current_row][current_column] == '0':
+                            currentColour = pink
                         if info[step][current_row][current_column] == '1':
                             currentColour = GREEN
                         if info[step][current_row][current_column] == '2':
@@ -232,13 +268,13 @@ if Q == 1:
     rho = float(input("Параметр смертности здоровой особи "))
     rho1 = float(input("Параметр смертности больной особи "))
 else:
-    cellCountX = 10
-    cellCountY = 10
-    alpha = 0.001  # .R->S
+    cellCountX = 30
+    cellCountY = 30
+    alpha = 0.1  # .R->S
     rho = 0.001  # .R->D
     rho1 = 0.1  # .I->D
-    beta = 1.22  # .S->I \1.22
-    gamma = 0.5  # .I->R    \0.5
+    beta = 1.33  # .S->I \1.22
+    gamma = 0.1  # .I->R    \0.5
 
 susceptibleCharacter = 'S'
 recoveredCharacter = 'R'
@@ -303,16 +339,17 @@ while RES[-1][-3] != 0:
                 upperRowNeighbours = oldUniverseList[currentRow - 1][currentColumn:currentColumn + 3]
             if (currentRow + 1) < cellCountY:
                 lowerRowNeighbours = oldUniverseList[currentRow + 1][currentColumn:currentColumn + 3]
-            newUniverseRow += newStateMOOR(currentRowNeighbours, upperRowNeighbours, lowerRowNeighbours, beta, gamma,
+            newUniverseRow += newStateVN(currentRowNeighbours, upperRowNeighbours, lowerRowNeighbours, beta, gamma,
                                           alpha, rho, rho1)
-            ##newUniverseRow += diffVN(currentRowNeighbours, upperRowNeighbours, lowerRowNeighbours)
             universeList[currentRow] = newUniverseRow
-    currentIteration += 1
+            newUniverseRow += diffVN(currentRowNeighbours, upperRowNeighbours, lowerRowNeighbours)
+            universeList[currentRow] = newUniverseRow
+
+currentIteration += 1
 start = 0.0
 end = 10
 iteration = 1
 timeRange = np.arange(start, end + start, iteration)
-
 pl.plot(list(map(itemgetter(4), RES)), list(map(itemgetter(1), RES)), 'green', label='Восприимчивые')
 pl.plot(list(map(itemgetter(4), RES)), list(map(itemgetter(2), RES)), 'red', label='Больные')
 pl.plot(list(map(itemgetter(4), RES)), list(map(itemgetter(3), RES)), 'blue', label='Выздоровевшие')
@@ -324,3 +361,4 @@ pl.ylabel('Population')
 pl.show()
 print(screenplay(cellCountX, cellCountY, info, currentIteration), currentIteration, RES[1])
 print(deadCount)
+
