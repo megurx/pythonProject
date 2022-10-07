@@ -4,17 +4,7 @@ import matplotlib.pyplot as pl
 from operator import itemgetter
 # Import a library of functions called 'pygame'
 import pygame
-
-def getRandomNumber(distribution):
-    if distribution == 0:
-        returningRandomNumber = np.random.uniform() # UNIFORM
-    elif distribution == 1:
-        returningRandomNumber = np.random.normal(.5, .1) # NORMAL
-    elif distribution == 2:
-        returningRandomNumber = (np.random.binomial(20, .5, 100) % 10) * 0.1 # BINOMIAL
-    elif distribution == 3:
-        returningRandomNumber = np.random.poisson(2) * .1 # POISSON
-    return returningRandomNumber
+from copy import deepcopy
 
 def drawSquare(screen, currentColour, currentColumn, cellSize, currentRow):
     pygame.draw.rect(screen, currentColour, [currentColumn * cellSize, currentRow * cellSize, (currentColumn + 1)
@@ -22,8 +12,6 @@ def drawSquare(screen, currentColour, currentColumn, cellSize, currentRow):
 
 def drawGenerationUniverse(cellCountX, cellCountY, universeTimeSeries):
     pygame.init()
-
-    # Define the colors we will use in RGB format
     BLACK = (  0,   0,   0)
     WHITE = (255, 255, 255)
     BLUE =  (  0,   0, 255)
@@ -40,22 +28,15 @@ def drawGenerationUniverse(cellCountX, cellCountY, universeTimeSeries):
     screen = pygame.display.set_mode(size)
     screen.fill(WHITE)
 
-    #Loop until the user clicks the close button.
     clock = pygame.time.Clock()
-
-    #while 1:
-    # Make sure game doesn't run at more than 60 frames per second
-    mainloop = True
-    FPS = 60                           # desired max. framerate in frames per second.
+    FPS = 60
     playtime = 0
     cycletime = 0
-    interval = .15#.15 # how long one single images should be displayed in seconds
+    interval = .1
     picnr = 0
-
-    #for currentStep in range(simulationIterations):
     currentTimeStep = 0
+    while simulationIterations:
 
-    while mainloop:
         milliseconds = clock.tick(FPS)  # milliseconds passed since last frame
         seconds = milliseconds / 1000.0 # seconds passed since last frame (float)
         playtime += seconds
@@ -65,12 +46,11 @@ def drawGenerationUniverse(cellCountX, cellCountY, universeTimeSeries):
             if currentTimeStep >= simulationIterations:
                 currentTimeStep = 0
                 pygame.time.delay(3000)
-                break
+                pygame.quit()
             else:
                 currentTimeStep += 1
-            pygame.time.delay(1000)
+            pygame.time.delay(100)
             pygame.display.set_caption("TimeStep %3i:  " % currentTimeStep)
-
             picnr += 1
             if picnr > 5:
                 picnr = 0
@@ -78,7 +58,6 @@ def drawGenerationUniverse(cellCountX, cellCountY, universeTimeSeries):
 
             for currentRow in range(cellCountY):# Draw a solid rectangle
                 for currentColumn in range (cellCountX):
-                    # rect(Surface, color, Rect, width=0) -> Rect
                     if currentTimeStep > 0 and currentTimeStep < simulationIterations:
                         if universeTimeSeries[currentTimeStep][currentRow][currentColumn] == '0':
                             currentColour = BLUE
@@ -90,37 +69,29 @@ def drawGenerationUniverse(cellCountX, cellCountY, universeTimeSeries):
                             currentColour = GREEN
                         if universeTimeSeries[currentTimeStep][currentRow][currentColumn] == '4':
                             currentColour = BLACK
-
-                        if hexagonLayout:
-                            drawHexagon(screen, currentColour, currentColumn, cellSize, currentRow)
-                        else:
-                            drawSquare(screen, currentColour, currentColumn, cellSize, currentRow)
-        pygame.display.flip()
-
+                        drawSquare(screen, currentColour, currentColumn, cellSize, currentRow)
+        pygame.display.update()
+    return drawGenerationUniverse()
 def printGenerationUniverse(currentTimeStep, cellCountX, cellCountY, susceptibleCharacter, exposedCharacter, infectedCharacter, recoveredCharacter, deadCharacter):
     print("TimeStep %3i:  " % currentTimeStep)
-    rowLabel = "  "
+    rowLabel = ""
     for l in range(cellCountX):
         rowLabel += str(l) + " "
-    print(rowLabel)
+    logging.info(rowLabel)
     for currentRow in range(cellCountY):
         print("%s %s" % (currentRow, universeList[currentRow].replace('0', susceptibleCharacter + " ").replace('1', exposedCharacter + " ").
                          replace('2', infectedCharacter + " ").replace('3', recoveredCharacter + " ").replace('4', deadCharacter + " ")))
 
-''' This method calculates the new state of the cell based on Moore neighborhood '''
-def newStateVN(currentRowNeighbours, upperRowNeighbours, lowerRowNeighbours):
+def newStateVN(currentRowNeighbours, upperCharacter, lowerCharacter):
     leftCharacter = currentRowNeighbours[0]
     selfCharacter = currentRowNeighbours[1]
     rightCharacter = currentRowNeighbours[2]
-
-    upperCharacter = upperRowNeighbours[1]
-    lowerCharacter = lowerRowNeighbours[1]
 
     newState = selfCharacter
 
     if selfCharacter == '3':  # .S->I
         if leftCharacter == '2' or rightCharacter == '2' or upperCharacter == '2' or lowerCharacter == '2':
-            Pichance = (2 - np.random.uniform())
+            Pichance = (1 - np.random.uniform())
             if 0 < Pichance < Pi:
                 newState = '2'
             else:
@@ -128,97 +99,86 @@ def newStateVN(currentRowNeighbours, upperRowNeighbours, lowerRowNeighbours):
                 if 0 < Pdchance < Pd:
                     newState = '4'
 
-    elif selfCharacter == '2':  # I->R
+    elif selfCharacter == '2':
         Prchance = (1 - np.random.normal(0.5, 1.0))
         Pschance = (1 - np.random.normal(0.5, 1.0))
-        if Pr > Prchance  > 0:
+        if 0 < Prchance < Pr:
             newState = '0'
         else:
-            if 0 < Pschance < Ps:  # .I->D
+            if 0 < Pschance < Ps:
                 newState = '4'
 
-    elif selfCharacter == '0':  # R->I
+    elif selfCharacter == '0':
         Pschance = (1 - np.random.uniform())
-        if Ps > Pschance :
+        if 0 < Pschance < Ps :
             newState = '3'
         else:
-            Pdchance = (1 - np.random.normal(0.5, 1.0))  # .I->D
+            Pdchance = (1 - np.random.normal(0.5, 1.0))
             if 0 < Pdchance < Pd:
                 newState = '4'
 
-    elif selfCharacter == '1':  # I->R
+    elif selfCharacter == '1':
         if leftCharacter == '3' or rightCharacter == '3' or upperCharacter == '3' or lowerCharacter == '3':
-            Pbchance = (1 - np.random.normal(0.5, 1.0))
-            if Pb > Pbchance > 0:
+            Pbchance = np.random.normal(0.5, 1.0)
+            if 0 < Pbchance < Pb:
                 newState = '3'
 
-    elif selfCharacter == '4':  # I->R
+    elif selfCharacter =='1':
+        if leftCharacter == '2' or rightCharacter == '2' or upperCharacter == '2' or lowerCharacter == '2':
+            Pichance = np.random.normal(0.5, 1.0)
+            if 0 < Pichance < Pi:
+                newState = '2'
+
+    elif selfCharacter == '4':
         if leftCharacter == '0' or rightCharacter == '0' or upperCharacter == '0' or lowerCharacter == '0':
             Plchance = (1 - np.random.normal(0.5, 1.0))
-            if Pl > Plchance > 0:
+            if 0 < Plchance < Pl:
                 newState = '1'
     return newState
 
-def getNewState2Ddiff(currentRowNeighbours, upperRowNeighbours, lowerRowNeighbours):
-    difchance = 0.1
+def getNewState2Ddiff(currentRowNeighbours, upperCharacter, lowerCharacter):
+    difchance = 0.20
     leftCharacter = currentRowNeighbours[0]
     selfCharacter = currentRowNeighbours[1]
     rightCharacter = currentRowNeighbours[2]
 
-    upperCharacter = upperRowNeighbours[1]
-    lowerCharacter = lowerRowNeighbours[1]
+    q = 'self'
 
-    if selfCharacter == upperCharacter:
-        swap1 = [selfCharacter, rightCharacter, leftCharacter, lowerCharacter]
-        swap = [a for a in swap1 if a != '4']
-        if np.random.uniform() > difchance:
-            try:
-                q = random.choice(swap)
-                selfCharacter, q = q, selfCharacter
-            except IndexError:
-                pass
+    if selfCharacter == '4':
+        return selfCharacter, q
 
-    elif selfCharacter == lowerCharacter:
-        swap1 = [selfCharacter, rightCharacter, upperCharacter, leftCharacter]
-        swap = [a for a in swap1 if a != '4']
-        if np.random.uniform() > difchance:
-            try:
-                q = random.choice(swap)
-                selfCharacter, q = q, selfCharacter
-            except IndexError:
-                pass
+    swap1 = {'self': selfCharacter, 'right': rightCharacter, 'left': leftCharacter, 'lower': lowerCharacter, 'upper': upperCharacter}
 
-    elif selfCharacter == leftCharacter:
-        swap1 = [selfCharacter, rightCharacter, upperCharacter, lowerCharacter]
-        swap = [a for a in swap1 if a != '4']
-        if np.random.uniform() > difchance:
-            try:
-                q = random.choice(swap)
-                selfCharacter, q = q, selfCharacter
-            except IndexError:
-                pass
+    swap = {}
+    for k, v in swap1.items():
+        if v != '4' and v != '-':
+            swap[k] = v
 
-    elif selfCharacter == rightCharacter:
-        swap1 = [selfCharacter, leftCharacter, upperCharacter, lowerCharacter]
-        swap = [a for a in swap1 if a != '4']
-        if np.random.uniform() > difchance:
-            try:
-                q = random.choice(swap)
-                selfCharacter, q = q, selfCharacter
-            except IndexError:
-                pass
+    if np.random.uniform() > difchance:
+        try:
+            q = random.choice(list(swap.keys()))
+            selfCharacter = swap[q]
+        except IndexError:
+            pass
 
-    return selfCharacter
+    return selfCharacter, q
 
 
-Pi = 1.33
-Pr = 0.1
-Ps = 0.1
-Pb = 0.5
-Pd = 0.1
-Pl = 0.5
+Pi = 0.5
+Pr = 0.025
+Ps = 0.001
+Pb = 0.05
+Pd = 0.01
+Pl = 0.01
 
-simulationIterations = 50
+# Pi = 0.2
+# Pr = 0.001
+# Ps = 0.1
+# Pb = 0.01
+# Pd = 0.1
+# Pl = 0.01
+
+simulationIterations = 500
 cellCountX = 10
 cellCountY = 10
 hexagonLayout = False
@@ -235,9 +195,25 @@ timeStep = 1
 timeRange = np.arange(timeStart, timeEnd + timeStart, timeStep)
 universeList = []
 
-for currentColumn in range(cellCountY):
-    universe = ''.join(random.choice('00000000000000000000000001') for universeColumn in range(cellCountX))
-    universeList.append(universe)
+def centeredInitialization(cellCountX,cellCountY):
+    List=['3'*cellCountX for i in range(cellCountY)]
+    temp=''
+    for i in range(cellCountX):
+        if i==cellCountX//2:
+            temp+='2'
+        else:
+            temp+='3'
+    List[cellCountY//2]=temp
+    return List
+
+S = int(input())
+
+if S==2:
+    for currentColumn in range(cellCountY):
+        universe = ''.join(random.choice('333333333333333332') for universeColumn in range(cellCountX))
+        universeList.append(universe)
+else:
+    universeList = centeredInitialization(cellCountX,cellCountY)
 
 InitSusceptibles = 0.0
 InitInfected = 0.0
@@ -264,34 +240,62 @@ for currentTimeStep in range(simulationIterations):
         fourCount += universeList[currentRow].count('4')
     RES.append([zeroCount, oneCount, twoCount, threeCount, fourCount, currentTimeStep])
 
-    oldUniverseList = []
-    toCopyUniverseList = []
-    for currentRow in range(cellCountY):
-        oldUniverseList.append(extremeEndValue + universeList[currentRow] + extremeEndValue)
-        toCopyUniverseList.append(universeList[currentRow])
-
-    universeTimeSeries.append(toCopyUniverseList)
+    universeTimeSeries.append(deepcopy(universeList))
 
     for currentRow in range(cellCountY):
         newUniverseRow = ''
         for currentColumn in range(cellCountX):
-            upperRowNeighbours = '000'
-            lowerRowNeighbours = '000'
-            currentRowNeighbours = oldUniverseList[currentRow][currentColumn:currentColumn+3]
-            if (currentRow - 1) >= 0:
-                upperRowNeighbours = oldUniverseList[currentRow-1][currentColumn:currentColumn+3]
-            if (currentRow + 1) < cellCountY:
-                lowerRowNeighbours = oldUniverseList[currentRow+1][currentColumn:currentColumn+3]
+            if currentRow != 0:
+                upperRowNeighbours = universeList[currentRow-1][currentColumn]
+            else:
+                upperRowNeighbours = '-'
+            if currentRow != cellCountY - 1:
+                lowerRowNeighbours = universeList[currentRow+1][currentColumn]
+            else:
+                lowerRowNeighbours = '-'
 
-            #newUniverseRow += newStateVN(currentRowNeighbours, upperRowNeighbours, lowerRowNeighbours)
-            #universeList[currentRow] = newUniverseRow
-            newUniverseRow += getNewState2Ddiff(currentRowNeighbours, upperRowNeighbours, lowerRowNeighbours)
-            universeList[currentRow] = newUniverseRow
+            if currentColumn == 0:
+                currentRowNeighbours = '-' + universeList[currentRow][currentColumn:currentColumn+2]
+            elif currentColumn == cellCountX - 1:
+                currentRowNeighbours = universeList[currentRow][currentColumn-1:currentColumn+1] + '-'
+            else:
+                currentRowNeighbours = universeList[currentRow][currentColumn-1:currentColumn+2]
+            newState = newStateVN(currentRowNeighbours, upperRowNeighbours, lowerRowNeighbours)
+            if currentColumn == 0:
+                universeList[currentRow] = newState + universeList[currentRow][currentColumn+1:]
+            elif currentColumn == cellCountX:
+                universeList[currentRow] = universeList[currentRow][:currentColumn] + newState
+            else:
+                universeList[currentRow] = universeList[currentRow][:currentColumn] + newState + universeList[currentRow][currentColumn + 1:]
+            newState, ind = getNewState2Ddiff(currentRowNeighbours, upperRowNeighbours, lowerRowNeighbours)
+            a = deepcopy(universeList[currentRow])
+            if ind == 'self':
+                pass
+            elif ind == 'upper':
+                universeList[currentRow - 1] = universeList[currentRow - 1][:currentColumn] + currentRowNeighbours[1] + universeList[currentRow - 1][currentColumn+1:]
+                universeList[currentRow] = universeList[currentRow][:currentColumn] + newState + universeList[currentRow][currentColumn + 1:]
+            elif ind == 'lower':
+                universeList[currentRow + 1] = universeList[currentRow + 1][:currentColumn] + currentRowNeighbours[1] + universeList[currentRow + 1][currentColumn+1:]
+                universeList[currentRow] = universeList[currentRow][:currentColumn] + newState + universeList[currentRow][currentColumn + 1:]
+            elif ind == 'right':
+                universeList[currentRow] = universeList[currentRow][:currentColumn] + newState + currentRowNeighbours[1] + universeList[currentRow][currentColumn + 2:]
+            elif ind == 'left':
+                universeList[currentRow] = universeList[currentRow][:currentColumn - 1] + currentRowNeighbours[1] + newState + \
+                                           universeList[currentRow][currentColumn + 1:]
+
 
 np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
-RES = np.array(RES)
-print(RES)
+# RES = np.array(RES)
+RES.pop(0)
+print(*RES, sep='\n')
+pl.plot([x[-1] for x in RES], [x[0] for x in RES], 'green', label='Восприимчивые')
+pl.plot([x[-1] for x in RES], [x[2] for x in RES], 'red', label='Больные')
+pl.plot([x[-1] for x in RES], [x[3] for x in RES], 'blue', label='Выздоровевшие')
 
+pl.legend(loc=0)
+
+pl.xlabel('Time')
+pl.ylabel('Population')
 pl.show()
 
 drawGenerationUniverse(cellCountX, cellCountY, universeTimeSeries)
