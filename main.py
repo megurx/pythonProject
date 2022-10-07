@@ -36,7 +36,7 @@ def drawGenerationUniverse(cellCountX, cellCountY, universeTimeSeries):
     picnr = 0
     currentTimeStep = 0
     while simulationIterations:
-
+        pygame.event.get()
         milliseconds = clock.tick(FPS)  # milliseconds passed since last frame
         seconds = milliseconds / 1000.0 # seconds passed since last frame (float)
         playtime += seconds
@@ -72,8 +72,10 @@ def drawGenerationUniverse(cellCountX, cellCountY, universeTimeSeries):
                         drawSquare(screen, currentColour, currentColumn, cellSize, currentRow)
         pygame.display.update()
     return drawGenerationUniverse()
-def printGenerationUniverse(currentTimeStep, cellCountX, cellCountY, susceptibleCharacter, exposedCharacter, infectedCharacter, recoveredCharacter, deadCharacter):
-    print("TimeStep %3i:  " % currentTimeStep)
+
+def printGenerationUniverse(currentTimeStep, cellCountX, cellCountY, susceptibleCharacter,\
+                            exposedCharacter, infectedCharacter, recoveredCharacter, deadCharacter):
+    logging.info("TimeStep %3i:  " % currentTimeStep)
     rowLabel = ""
     for l in range(cellCountX):
         rowLabel += str(l) + " "
@@ -298,4 +300,4 @@ pl.xlabel('Time')
 pl.ylabel('Population')
 pl.show()
 
-drawGenerationUniverse(cellCountX, cellCountY, universeTimeSeries)
+print(drawGenerationUniverse(cellCountX, cellCountY, universeTimeSeries))
